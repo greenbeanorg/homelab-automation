@@ -28,3 +28,15 @@
   become: true
   roles:
     - k3s
+
+- name: Build and deploy the app
+  hosts: k3s_hosts
+  become: true
+  roles:
+    - app-deploy
+
+- name: Set up the public reverse proxy on kk1
+  hosts: kk1_hosts
+  become: true
+  roles:
+    - nginx-proxy

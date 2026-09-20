@@ -1,0 +1,9 @@
+all:
+  children:
+    kk1_hosts:
+      hosts:
+        kk1:
+          ansible_host: 10.99.0.1 # reached over the existing WireGuard tunnel, not its public IP
+          ansible_user: aba       # Ubuntu cloud image - no direct root SSH, use the default user + sudo
+      vars:
+        ansible_python_interpreter: /usr/bin/python3

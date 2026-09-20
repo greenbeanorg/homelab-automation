@@ -1,0 +1,50 @@
+---
+# Two prerequisites this depends on that live OUTSIDE this playbook, and
+# will make certbot fail loudly if they aren't done first:
+#   1. DNS: tasks.greenbean.org A record pointing at kk1's public IP
+#   2. Oracle Cloud's Security List (separate from this host's own ufw,
+#      which is inactive) allowing inbound TCP 80 and 443
+
+- name: Install nginx and certbot
+  ansible.builtin.apt:
+    name:
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: true
+
+- name: Deploy the initial HTTP server block for tasks.greenbean.org
+  ansible.builtin.template:
+    src: tasks.greenbean.org.conf.j2
+    dest: /etc/nginx/sites-available/tasks.greenbean.org
+    mode: '0644'
+  notify: Reload nginx
+
+- name: Enable the site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/tasks.greenbean.org
+    dest: /etc/nginx/sites-enabled/tasks.greenbean.org
+    state: link
+  notify: Reload nginx
+
+- name: Remove the default nginx site (avoids server_name conflicts)
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Validate nginx config before relying on the reload handler
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Apply the HTTP config now - certbot's challenge needs a working plain-HTTP server first
+  ansible.builtin.meta: flush_handlers
+
+- name: Obtain and install the Let's Encrypt certificate (also adds the HTTPS server block + HTTP->HTTPS redirect automatically)
+  ansible.builtin.command: >
+    certbot --nginx -d tasks.greenbean.org
+    --non-interactive --agree-tos -m {{ certbot_email }}
+    --redirect
+  args:
+    creates: /etc/letsencrypt/live/tasks.greenbean.org/fullchain.pem
