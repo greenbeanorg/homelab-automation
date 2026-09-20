@@ -1,0 +1,9 @@
+all:
+  children:
+    garrett_fleet:
+      hosts:
+        tf-smoke-test:
+          ansible_host: 10.79.20.199
+          ansible_user: root
+      vars:
+        ansible_python_interpreter: /usr/bin/python3

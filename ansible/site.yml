@@ -1,0 +1,6 @@
+---
+- name: Configure garrett's fleet
+  hosts: garrett_fleet
+  become: true
+  roles:
+    - common

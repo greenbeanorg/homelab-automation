@@ -1,0 +1,6 @@
+# Copy this to terraform.tfvars and fill in the real token.
+# terraform.tfvars is gitignored — never commit it, sanitized or not.
+
+garrett_api_endpoint = "https://10.79.10.25:8006/api2/json"
+garrett_api_token    = "<user>@<realm>!<token-id>=<secret>"
+garrett_node_name    = "garrett"
