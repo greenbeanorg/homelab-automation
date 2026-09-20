@@ -1,0 +1,46 @@
+---
+# Verified against get.k3s.io directly (via search of current mirrors) -
+# curl -sfL https://get.k3s.io | sh - remains the current, standard install
+# path and hasn't changed in years. It installs k3s + kubectl + crictl as a
+# systemd service and writes /etc/rancher/k3s/k3s.yaml as the kubeconfig.
+
+- name: Ensure the k3s config directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: '0755'
+
+- name: Configure kubelet to tolerate running inside an unprivileged container (no /dev/kmsg access)
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      kubelet-arg:
+        - "feature-gates=KubeletInUserNamespace=true"
+    mode: '0644'
+  notify: Restart k3s
+
+- name: Apply the config now if it just changed, before checking install/readiness below
+  ansible.builtin.meta: flush_handlers
+
+- name: Check if k3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_bin
+
+- name: Download and run the official k3s install script
+  ansible.builtin.shell: curl -sfL https://get.k3s.io | sh -
+  when: not k3s_bin.stat.exists
+
+- name: Ensure k3s is enabled and running
+  ansible.builtin.systemd:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Wait for the node to report Ready before moving on
+  ansible.builtin.command: k3s kubectl get nodes
+  register: node_status
+  until: "'Ready' in node_status.stdout"
+  retries: 12
+  delay: 10
+  changed_when: false

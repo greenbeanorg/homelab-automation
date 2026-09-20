@@ -1,0 +1,40 @@
+---
+# Base install + network config only. The actual app database/user gets
+# created alongside the Flask app in the next stage, once the schema is
+# designed - creating it blind here would just mean redoing it anyway.
+
+- name: Install PostgreSQL
+  ansible.builtin.apt:
+    name: postgresql
+    state: present
+    update_cache: true
+
+- name: Find the installed PostgreSQL version directory (name varies by release)
+  ansible.builtin.find:
+    paths: /etc/postgresql
+    file_type: directory
+  register: pg_dirs
+
+- name: Set a fact for the postgres config directory
+  ansible.builtin.set_fact:
+    pg_conf_dir: "{{ pg_dirs.files[0].path }}/main"
+
+- name: Listen on all interfaces, not just localhost (needed for the app + Icinga2 to reach it over VLAN 20)
+  ansible.builtin.lineinfile:
+    path: "{{ pg_conf_dir }}/postgresql.conf"
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+  notify: Restart postgresql
+
+- name: Allow password-authenticated connections from the VLAN 20 servers subnet
+  ansible.builtin.lineinfile:
+    path: "{{ pg_conf_dir }}/pg_hba.conf"
+    line: "host    all             all             10.79.20.0/24            scram-sha-256"
+    insertafter: EOF
+  notify: Restart postgresql
+
+- name: Ensure PostgreSQL is enabled and running
+  ansible.builtin.systemd:
+    name: postgresql
+    enabled: true
+    state: started

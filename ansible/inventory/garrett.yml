@@ -2,8 +2,23 @@ all:
   children:
     garrett_fleet:
       hosts:
-        tf-smoke-test:
-          ansible_host: 10.79.20.199
+        icinga2:
+          ansible_host: 10.79.20.40
+          ansible_user: root
+        postgres1:
+          ansible_host: 10.79.20.50
+          ansible_user: root
+        k3s1:
+          ansible_host: 10.79.20.60
           ansible_user: root
       vars:
         ansible_python_interpreter: /usr/bin/python3
+    icinga_hosts:
+      hosts:
+        icinga2:
+    postgres_hosts:
+      hosts:
+        postgres1:
+    k3s_hosts:
+      hosts:
+        k3s1:

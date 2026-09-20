@@ -4,3 +4,27 @@
   become: true
   roles:
     - common
+
+- name: Install and configure Icinga2
+  hosts: icinga_hosts
+  become: true
+  roles:
+    - icinga2
+
+- name: Install and configure PostgreSQL
+  hosts: postgres_hosts
+  become: true
+  roles:
+    - postgresql
+
+- name: Create the app database, user, and schema
+  hosts: postgres_hosts
+  become: true
+  roles:
+    - app-db
+
+- name: Install k3s
+  hosts: k3s_hosts
+  become: true
+  roles:
+    - k3s

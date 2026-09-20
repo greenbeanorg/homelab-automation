@@ -12,6 +12,8 @@
       - htop
       - unattended-upgrades
       - fail2ban
+      - sudo # minimal Debian LXC templates don't ship this; needed by any
+             # future become_user task, not just Postgres's
     state: present
 
 - name: Set timezone
