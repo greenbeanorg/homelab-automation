@@ -1,61 +1,51 @@
 ---
-# Two prerequisites this depends on that live OUTSIDE this playbook, and
-# will make certbot fail loudly if they aren't done first:
-#   1. DNS: tasks.greenbean.org A record pointing at kk1's public IP
-#   2. Oracle Cloud's Security List (separate from this host's own ufw,
-#      which is inactive) allowing inbound TCP 80 and 443
+# Uses raw psql via shell rather than a community.postgresql/community.general
+# module, deliberately, so this doesn't depend on a collection that may or
+# may not be bundled with whatever Ansible install runs this. Every step
+# checks first, so re-running this is always safe.
 
-- name: Install nginx and certbot
-  ansible.builtin.apt:
-    name:
-      - nginx
-      - certbot
-      - python3-certbot-nginx
-    state: present
-    update_cache: true
+- name: Create app database if it doesn't already exist
+  become: true
+  become_user: postgres
+  ansible.builtin.shell: >
+    psql -tAc "SELECT 1 FROM pg_database WHERE datname='appdb'" | grep -q 1
+    || psql -c "CREATE DATABASE appdb"
+  register: db_create
+  changed_when: "'CREATE DATABASE' in db_create.stdout"
 
-- name: Define the rate-limit zone (must live in the http{} context, not the server block)
+- name: Create app db user if it doesn't already exist
+  become: true
+  become_user: postgres
+  ansible.builtin.shell: >
+    psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='appuser'" | grep -q 1
+    || psql -c "CREATE ROLE appuser LOGIN PASSWORD '{{ app_db_password }}'"
+  register: user_create
+  changed_when: "'CREATE ROLE' in user_create.stdout"
+  no_log: true # keeps the password out of ansible-playbook's console output/logs
+
+- name: Grant privileges on appdb to appuser
+  become: true
+  become_user: postgres
+  ansible.builtin.shell: >
+    psql -d appdb -c "GRANT ALL PRIVILEGES ON DATABASE appdb TO appuser;"
+    && psql -d appdb -c "GRANT ALL ON SCHEMA public TO appuser;"
+  changed_when: true
+
+- name: Copy the schema file to the postgres host
   ansible.builtin.copy:
-    dest: /etc/nginx/conf.d/rate-limit.conf
-    content: |
-      # Public app, no auth - this is the primary defense against a bot or
-      # script hammering /tasks with POST requests and filling the DB.
-      # 5 requests/sec per IP, with a small burst allowance.
-      limit_req_zone $binary_remote_addr zone=tasks_limit:10m rate=5r/s;
+    src: "{{ playbook_dir }}/../app/schema.sql"
+    dest: /tmp/schema.sql
     mode: '0644'
-  notify: Reload nginx
 
-- name: Deploy the initial HTTP server block for tasks.greenbean.org
-  ansible.builtin.template:
-    src: tasks.greenbean.org.conf.j2
-    dest: /etc/nginx/sites-available/tasks.greenbean.org
-    mode: '0644'
-  notify: Reload nginx
+- name: Apply the schema (CREATE TABLE IF NOT EXISTS - safe to re-run)
+  become: true
+  become_user: postgres
+  ansible.builtin.command: psql -d appdb -f /tmp/schema.sql
+  changed_when: true
 
-- name: Enable the site
-  ansible.builtin.file:
-    src: /etc/nginx/sites-available/tasks.greenbean.org
-    dest: /etc/nginx/sites-enabled/tasks.greenbean.org
-    state: link
-  notify: Reload nginx
-
-- name: Remove the default nginx site (avoids server_name conflicts)
-  ansible.builtin.file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: Reload nginx
-
-- name: Validate nginx config before relying on the reload handler
-  ansible.builtin.command: nginx -t
-  changed_when: false
-
-- name: Apply the HTTP config now - certbot's challenge needs a working plain-HTTP server first
-  ansible.builtin.meta: flush_handlers
-
-- name: Obtain and install the Let's Encrypt certificate (also adds the HTTPS server block + HTTP->HTTPS redirect automatically)
+- name: Grant table/sequence privileges to appuser (schema-level grant above does NOT cover tables already owned by postgres)
+  become: true
+  become_user: postgres
   ansible.builtin.command: >
-    certbot --nginx -d tasks.greenbean.org
-    --non-interactive --agree-tos -m {{ certbot_email }}
-    --redirect
-  args:
-    creates: /etc/letsencrypt/live/tasks.greenbean.org/fullchain.pem
+    psql -d appdb -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;"
+  changed_when: true
