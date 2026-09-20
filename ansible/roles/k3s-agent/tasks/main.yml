@@ -1,0 +1,57 @@
+---
+# Same /dev/kmsg fix as the server role - agents run containerd too, and
+# will hit the identical crash loop without this. Duplicated here rather
+# than shared, since it's small and self-contained.
+
+- name: Ensure the k3s config directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: '0755'
+
+- name: Configure kubelet to tolerate running inside an unprivileged container
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      kubelet-arg:
+        - "feature-gates=KubeletInUserNamespace=true"
+    mode: '0644'
+  register: kubelet_config
+
+- name: Check if k3s agent is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_bin
+
+- name: Restart k3s-agent now if the config changed on an already-installed node
+  ansible.builtin.systemd:
+    name: k3s-agent
+    state: restarted
+  when: kubelet_config.changed and k3s_bin.stat.exists
+  # On a FRESH node this is deliberately skipped rather than notified via a
+  # handler: k3s-agent.service doesn't exist yet on first install, so
+  # restarting it here would fail. The install script below starts it for
+  # the first time instead.
+
+- name: Download and run the k3s agent install script, joining k3s1's control plane
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    K3S_URL=https://{{ hostvars['k3s1']['ansible_host'] }}:6443
+    K3S_TOKEN={{ hostvars['k3s1']['k3s_join_token'] }}
+    sh -
+  when: not k3s_bin.stat.exists
+
+- name: Ensure k3s-agent is enabled and running
+  ansible.builtin.systemd:
+    name: k3s-agent
+    enabled: true
+    state: started
+
+- name: Confirm this node joined and is Ready (checked from the server, since kubectl only lives there)
+  ansible.builtin.command: k3s kubectl get node {{ inventory_hostname }}
+  delegate_to: k3s1
+  register: agent_status
+  until: "'Ready' in agent_status.stdout"
+  retries: 12
+  delay: 10
+  changed_when: false

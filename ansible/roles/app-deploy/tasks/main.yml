@@ -1,0 +1,62 @@
+---
+# Docker is installed here SOLELY as a build tool - there is no registry in
+# this lab, so "docker build" + "docker save" + "k3s ctr images import" is
+# the standard bootstrap path for getting a locally-built image into a
+# single-node k3s cluster without one. In a real production setup this step
+# is replaced by a CI pipeline pushing to an actual registry (e.g. GitLab
+# Container Registry) - this is a deliberate, temporary shortcut, not the
+# production pattern.
+
+- name: Install Docker (build tool only, not used to run anything long-term)
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: true
+
+- name: Ensure the Docker service is running (needed for docker build)
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Copy the app source to the k3s host
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../app/"
+    dest: /opt/app/
+    mode: '0644'
+
+- name: Build the app image
+  ansible.builtin.command:
+    cmd: docker build -t tasks-api:latest /opt/app
+  changed_when: true
+
+- name: Save the image to a tarball
+  ansible.builtin.command:
+    cmd: docker save tasks-api:latest -o /tmp/tasks-api.tar
+  changed_when: true
+
+- name: Import the image into k3s's containerd (note the k8s.io namespace - this is the detail that's easy to miss)
+  ansible.builtin.command:
+    cmd: k3s ctr -n k8s.io images import /tmp/tasks-api.tar
+  changed_when: true
+
+- name: Copy the k8s manifests to the host (secret.yaml only if it exists locally - never committed)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/opt/app/k8s-manifests/"
+    mode: '0644'
+  loop:
+    - "{{ playbook_dir }}/../k8s/deployment.yaml"
+    - "{{ playbook_dir }}/../k8s/service.yaml"
+    - "{{ playbook_dir }}/../k8s/secret.yaml"
+  when: inventory_hostname == 'k3s1'
+  # Only the server has a working kubeconfig (/etc/rancher/k3s/k3s.yaml) -
+  # agent nodes don't get one, since they have no local API server. The
+  # image build/import steps above still run on every node in the group;
+  # only the manifest apply needs to happen exactly once, from the server.
+
+- name: Apply the manifests
+  ansible.builtin.command:
+    cmd: k3s kubectl apply -f /opt/app/k8s-manifests/
+  changed_when: true
+  when: inventory_hostname == 'k3s1'

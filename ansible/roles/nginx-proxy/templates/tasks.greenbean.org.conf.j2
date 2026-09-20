@@ -3,6 +3,7 @@ server {
     server_name tasks.greenbean.org;
 
     location / {
+        limit_req zone=tasks_limit burst=10 nodelay;
         proxy_pass http://10.79.20.60:30080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

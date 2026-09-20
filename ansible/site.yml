@@ -23,11 +23,17 @@
   roles:
     - app-db
 
-- name: Install k3s
-  hosts: k3s_hosts
+- name: Install k3s (server)
+  hosts: k3s_server_hosts
   become: true
   roles:
     - k3s
+
+- name: Join k3s agent nodes to the cluster
+  hosts: k3s_agent_hosts
+  become: true
+  roles:
+    - k3s-agent
 
 - name: Build and deploy the app
   hosts: k3s_hosts

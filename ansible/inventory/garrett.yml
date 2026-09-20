@@ -11,6 +11,12 @@ all:
         k3s1:
           ansible_host: 10.79.20.60
           ansible_user: root
+        k3s2:
+          ansible_host: 10.79.20.61
+          ansible_user: root
+        k3s3:
+          ansible_host: 10.79.20.62
+          ansible_user: root
       vars:
         ansible_python_interpreter: /usr/bin/python3
     icinga_hosts:
@@ -19,6 +25,14 @@ all:
     postgres_hosts:
       hosts:
         postgres1:
-    k3s_hosts:
+    k3s_server_hosts:
       hosts:
         k3s1:
+    k3s_agent_hosts:
+      hosts:
+        k3s2:
+        k3s3:
+    k3s_hosts: # parent group covering the whole cluster - used by app-deploy
+      children:
+        k3s_server_hosts:
+        k3s_agent_hosts:

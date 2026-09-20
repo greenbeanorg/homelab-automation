@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasks-api
+spec:
+  replicas: 3 # bumped from 2 now that there are 3 nodes to actually spread across
+  selector:
+    matchLabels:
+      app: tasks-api
+  template:
+    metadata:
+      labels:
+        app: tasks-api
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: tasks-api
+      # ScheduleAnyway, not DoNotSchedule: with only 3 nodes and 3 replicas,
+      # a rolling update or a node drain routinely creates brief imbalance.
+      # DoNotSchedule turned that normal, temporary imbalance into a stuck
+      # rollout - confirmed the hard way, when draining k3s2 mid-rollout
+      # left an old pod permanently stranded on k3s1. ScheduleAnyway keeps
+      # spread as a preference instead of a hard rule the scheduler can
+      # deadlock itself over.
+      containers:
+        - name: tasks-api
+          image: tasks-api:latest
+          imagePullPolicy: Never # image is built and imported locally - no registry exists yet
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: "10.79.20.50"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "appdb"
+            - name: DB_USER
+              value: "appuser"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-db-secret
+                  key: DB_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 20

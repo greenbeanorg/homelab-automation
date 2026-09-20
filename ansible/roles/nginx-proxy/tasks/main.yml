@@ -14,6 +14,17 @@
     state: present
     update_cache: true
 
+- name: Define the rate-limit zone (must live in the http{} context, not the server block)
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/rate-limit.conf
+    content: |
+      # Public app, no auth - this is the primary defense against a bot or
+      # script hammering /tasks with POST requests and filling the DB.
+      # 5 requests/sec per IP, with a small burst allowance.
+      limit_req_zone $binary_remote_addr zone=tasks_limit:10m rate=5r/s;
+    mode: '0644'
+  notify: Reload nginx
+
 - name: Deploy the initial HTTP server block for tasks.greenbean.org
   ansible.builtin.template:
     src: tasks.greenbean.org.conf.j2

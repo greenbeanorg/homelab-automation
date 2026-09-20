@@ -69,6 +69,8 @@ def create_task():
     title = data.get("title")
     if not title:
         return jsonify(error="title is required"), 400
+    if len(title) > 200:
+        return jsonify(error="title too long (max 200 characters)"), 400
     done = bool(data.get("done", False))
 
     conn = get_db_connection()
@@ -97,6 +99,10 @@ def update_task(task_id):
 
     title = data.get("title")
     done = data.get("done")
+    if title is not None and len(title) > 200:
+        cur.close()
+        conn.close()
+        return jsonify(error="title too long (max 200 characters)"), 400
     cur.execute(
         """
         UPDATE tasks
