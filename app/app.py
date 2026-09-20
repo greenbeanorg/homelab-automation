@@ -1,7 +1,7 @@
 import os
 import psycopg2
 import psycopg2.extras
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 
 app = Flask(__name__)
 
@@ -16,6 +16,11 @@ DB_CONFIG = {
 
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 
 @app.route("/healthz")

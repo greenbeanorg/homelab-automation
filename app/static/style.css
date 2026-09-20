@@ -1,0 +1,98 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0f1115;
+  color: #e8e8e8;
+  margin: 0;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+main {
+  width: 100%;
+  max-width: 480px;
+}
+
+h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: #9a9a9a;
+  font-size: 0.9rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+#add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+#new-title {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #1a1d24;
+  color: #e8e8e8;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #4f7cff;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #3d68e8;
+}
+
+#task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: #1a1d24;
+  margin-bottom: 0.5rem;
+}
+
+.task.done .title {
+  text-decoration: line-through;
+  color: #777;
+}
+
+.task .title {
+  flex: 1;
+}
+
+.task button.delete {
+  background: transparent;
+  color: #ff6b6b;
+  padding: 0.25rem 0.5rem;
+}
+
+.task button.delete:hover {
+  background: #2a1a1a;
+}
+
+.empty-state {
+  color: #777;
+  text-align: center;
+  margin-top: 2rem;
+}

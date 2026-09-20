@@ -42,3 +42,10 @@
   become_user: postgres
   ansible.builtin.command: psql -d appdb -f /tmp/schema.sql
   changed_when: true
+
+- name: Grant table/sequence privileges to appuser (schema-level grant above does NOT cover tables already owned by postgres)
+  become: true
+  become_user: postgres
+  ansible.builtin.command: >
+    psql -d appdb -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO appuser; GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO appuser;"
+  changed_when: true

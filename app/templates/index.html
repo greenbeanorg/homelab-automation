@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasks API</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <h1>Tasks</h1>
+    <p class="subtitle">Flask + Postgres, running on k3s, provisioned by Terraform + Ansible.</p>
+
+    <form id="add-form">
+      <input type="text" id="new-title" placeholder="New task..." required>
+      <button type="submit">Add</button>
+    </form>
+
+    <ul id="task-list"></ul>
+
+    <p id="empty-state" class="empty-state" hidden>No tasks yet - add one above.</p>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
