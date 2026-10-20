@@ -18,8 +18,9 @@ no Control Agent.
   and each file names its own host.
 - `deploy.sh kea1|kea2` — runs the check, fills in the password from
   `.secrets/pg-password`, installs the result as `kea-dhcp4.conf.candidate` on
-  the host and runs `kea-dhcp4 -t` on it. Does not restart Kea. `-t` does not
-  load hooks, so HA parameter errors only appear at the real start.
+  the host and runs `kea-dhcp4 -t` on it. Does not restart Kea. `-t` loads the
+  hook libraries but doesn't run HA configuration or connect to Postgres, so
+  HA parameter and database password errors only appear at the real start.
 
 ## Ports
 

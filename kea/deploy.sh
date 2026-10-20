@@ -4,8 +4,9 @@
 # installs it on the host as kea-dhcp4.conf.candidate with the live file's owner
 # and mode, and runs kea-dhcp4 -t on it. It does NOT restart Kea:
 # activation is a deliberate, separate step because peer order matters.
-# Note: kea-dhcp4 -t checks syntax and core config but does not load hooks,
-# so HA parameter errors only show at the real start. Watch the log.
+# Note: kea-dhcp4 -t loads the hook libraries (a missing .so fails here) but
+# does not run HA configuration or connect to Postgres, so HA parameter and
+# database password errors only show at the real start. Watch the log.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 case "${1:-}" in
