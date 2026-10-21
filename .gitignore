@@ -1,1 +1,10 @@
 ansible/group_vars/all/secrets.yml
+uptime-kuma/inventory.yaml
+.env
+*.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.bak
+.DS_Store

@@ -1,0 +1,72 @@
+# inventory.example.yaml — copy to inventory.yaml and fill in your own hosts.
+#
+# Layout: site -> category -> [entries]. Site and category only group the
+# script output; they don't create Kuma tags or groups.
+#
+# Each entry becomes one Uptime Kuma monitor (kuma_sync.py, kuma_repave.py).
+# Monitor names are the key: renaming an entry creates a new monitor rather
+# than renaming the old one.
+#
+# Types: ping | http | json-query. Anything else stops the run.
+# Secrets are never written here — reference them as ${VAR} and put the
+# value in .env.
+#
+# Addresses below are RFC 5737 documentation ranges.
+
+home:
+  network:
+    - name: router
+      type: ping
+      target: 192.0.2.1
+
+    - name: core-switch
+      type: ping
+      target: 192.0.2.2
+
+    - name: wifi-ap
+      type: ping
+      target: 192.0.2.3
+
+  hypervisors:
+    - name: pve01
+      type: ping
+      target: 192.0.2.10
+
+    - name: pve02
+      type: ping
+      target: 192.0.2.11
+
+  storage:
+    - name: nas01
+      type: ping
+      target: 192.0.2.20
+
+  services:
+    # Plain HTTP check: any 2xx counts as up (the default).
+    - name: Home Assistant
+      type: http
+      target: http://192.0.2.30:8123
+
+    # JSON check: up only if the response field matches.
+    - name: app-health
+      type: json-query
+      target: http://192.0.2.40:8080/health
+      jsonPath: $.status
+      jsonPathOperator: "=="
+      expectedValue: ok
+
+  media:
+    # Authenticated check: the token is expanded from .env at sync time.
+    - name: Plex
+      type: http
+      target: http://192.0.2.50:32400
+      headers: '{"X-Plex-Token": "${PLEX_TOKEN}"}'
+      accepted_statuscodes:
+        - "200"
+
+remote:
+  site-b:
+    # Reached over a site-to-site VPN.
+    - name: site-b-gateway
+      type: ping
+      target: 198.51.100.1
