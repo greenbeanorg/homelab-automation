@@ -20,6 +20,78 @@
           #{{ vsphere_lab_bridge_comment }}
       notify: Reload network
 
+    - name: Route between the lab bridge and the LAN
+      ansible.posix.sysctl:
+        name: net.ipv4.ip_forward
+        value: "1"
+        sysctl_file: /etc/sysctl.d/90-vsphere-lab.conf
+        sysctl_set: true
+        reload: true
+        state: present
+
+    - name: Firewall table that keeps the lab out of the site LAN
+      ansible.builtin.copy:
+        dest: /etc/nftables-vsphere-lab.nft
+        owner: root
+        group: root
+        mode: "0644"
+        validate: nft -c -f %s
+        content: |
+          #!/usr/sbin/nft -f
+          # Managed by Ansible (vsphere-lab-pve.yml). Touches only this table.
+          table inet vsphere_lab
+          delete table inet vsphere_lab
+          table inet vsphere_lab {
+              chain forward {
+                  type filter hook forward priority filter; policy accept;
+                  iifname "{{ vsphere_lab_bridge }}" ip daddr {{ vsphere_lab_site_lan }} counter drop comment "lab to site LAN"
+                  oifname "{{ vsphere_lab_bridge }}" ip saddr {{ vsphere_lab_site_lan }} counter drop comment "site LAN to lab"
+              }
+          }
+      notify: Reload lab firewall
+
+    - name: Systemd unit that loads the lab firewall table
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/vsphere-lab-nft.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=nftables table for the nested vSphere lab (inet vsphere_lab)
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/sbin/nft -f /etc/nftables-vsphere-lab.nft
+          ExecReload=/usr/sbin/nft -f /etc/nftables-vsphere-lab.nft
+          ExecStop=/usr/sbin/nft delete table inet vsphere_lab
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload lab firewall
+
+    - name: Lab firewall loaded now and at boot
+      ansible.builtin.systemd_service:
+        name: vsphere-lab-nft.service
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Lab firewall loaded now and at boot
+      ansible.builtin.systemd_service:
+        name: vsphere-lab-nft.service
+        enabled: true
+        state: started
+        daemon_reload: true
+      ignore_errors: "{{ ansible_check_mode }}"
+
   handlers:
     - name: Reload network
       ansible.builtin.command: ifreload -a
+
+    - name: Reload lab firewall
+      ansible.builtin.systemd_service:
+        name: vsphere-lab-nft.service
+        state: reloaded
+        daemon_reload: true

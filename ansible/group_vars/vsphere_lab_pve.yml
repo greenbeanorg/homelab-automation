@@ -6,3 +6,4 @@ vsphere_lab_bridge_comment: "vSphere nested lab - routed, no uplink"
 vsphere_lab_cidr: 172.16.60.0/24
 vsphere_lab_gateway: 172.16.60.1
 vsphere_lab_prefix: 24
+vsphere_lab_site_lan: 192.168.1.0/24
