@@ -1,0 +1,12 @@
+all:
+  children:
+    zombie_fleet:
+      hosts:
+        zombie-pve:
+          ansible_host: 192.168.1.100 # remote site, reached over WireGuard via kk1
+          ansible_user: root          # Proxmox host, root SSH by key
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+    vsphere_lab_pve:
+      hosts:
+        zombie-pve:

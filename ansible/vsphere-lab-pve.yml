@@ -1,0 +1,25 @@
+---
+# Prepare the Proxmox host that runs the nested vSphere lab.
+- name: Prepare Proxmox host for the nested vSphere lab
+  hosts: vsphere_lab_pve
+  gather_facts: false
+
+  tasks:
+    - name: Lab bridge in /etc/network/interfaces
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED: vsphere lab bridge"
+        backup: true
+        block: |
+          auto {{ vsphere_lab_bridge }}
+          iface {{ vsphere_lab_bridge }} inet static
+              address {{ vsphere_lab_gateway }}/{{ vsphere_lab_prefix }}
+              bridge-ports none
+              bridge-stp off
+              bridge-fd 0
+          #{{ vsphere_lab_bridge_comment }}
+      notify: Reload network
+
+  handlers:
+    - name: Reload network
+      ansible.builtin.command: ifreload -a

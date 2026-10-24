@@ -1,0 +1,8 @@
+# Nested vSphere lab — the Proxmox host that runs it.
+# Used by vsphere-lab-pve.yml.
+
+vsphere_lab_bridge: vmbr60
+vsphere_lab_bridge_comment: "vSphere nested lab - routed, no uplink"
+vsphere_lab_cidr: 172.16.60.0/24
+vsphere_lab_gateway: 172.16.60.1
+vsphere_lab_prefix: 24
