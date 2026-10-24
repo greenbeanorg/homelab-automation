@@ -77,13 +77,6 @@
         enabled: true
         state: started
         daemon_reload: true
-
-    - name: Lab firewall loaded now and at boot
-      ansible.builtin.systemd_service:
-        name: vsphere-lab-nft.service
-        enabled: true
-        state: started
-        daemon_reload: true
       ignore_errors: "{{ ansible_check_mode }}"
 
   handlers:
